@@ -9,24 +9,19 @@ import java.util.ArrayList;
 import java.util.Random;
 
 public class RecommendationRunner implements Recommender {
-    private Random _random;
-    private AllFilters _filter;
-
-    public RecommendationRunner() {
-        this._random = new Random();
-        this._filter = new AllFilters();
-        _filter.addFilter(new MinutesFilter(60, 200));
-        _filter.addFilter(new YearAfterFilter(1990));
-    }
 
     @Override
     public ArrayList<String> getItemsToRate() {
+        Random random = new Random();
+        AllFilters filter = new AllFilters();
+        filter.addFilter(new MinutesFilter(60, 200));
+        filter.addFilter(new YearAfterFilter(1990));
         ArrayList<String> moviesToRate = new ArrayList<>();
-        ArrayList<String> selectFrom = MovieDatabase.filterBy(_filter);
+        ArrayList<String> selectFrom = MovieDatabase.filterBy(filter);
         int movieCount = 10;
 
         while (movieCount > 0) {
-            moviesToRate.add(selectFrom.get(_random.nextInt(selectFrom.size())));
+            moviesToRate.add(selectFrom.get(random.nextInt(selectFrom.size())));
             movieCount -= 1;
         }
 
@@ -37,13 +32,12 @@ public class RecommendationRunner implements Recommender {
     public void printRecommendationsFor(String webRaterID) {
         StringBuilder htmlTable = new StringBuilder();
         FourthRatings fourthRatings = new FourthRatings();
-        ArrayList<Rating> topMovies = fourthRatings.getSimilarRatingsByFilter(webRaterID, 20, 5, _filter);
+        ArrayList<Rating> topMovies = fourthRatings.getSimilarRatingsByFilter(webRaterID, 20, 5, new TrueFilter());
         setUpTable(htmlTable);
 
         if (topMovies.size() == 0) {
             htmlTable.append(
                     "<tr><td><h2>Sorry! We can't find any movies to recommend. Please try again.</h2></td></tr>");
-
         } else {
             for (Rating movie : topMovies) {
                 if (!RaterDatabase.getRater(webRaterID).hasRating(movie.getItem())) {
@@ -58,15 +52,16 @@ public class RecommendationRunner implements Recommender {
     private void setUpTable(StringBuilder table) {
         table.append("<style>");
         table.append("body{background: #181818;}");
+        table.append(".content {background: #181818 !important;}");
         table.append(
                 ".movie-table{margin: 0 auto;background: #232323;border-radius: 20px;padding: 10px;}");
         table.append(".thumb-nail{width: 300px;height: 350px;border-radius: 10px;}");
         table.append(".movie-details {width: 200px;padding: 10px;}");
-        table.append("h2{color: #0098d9;}");
-        table.append("p{color: #d6d6d6;}");
+        table.append("td h2{color: #0098d9;}");
+        table.append("td p{color: #d6d6d6;}");
         table.append("span{font-weight: 700;font-style: italic;}");
         table.append(
-                "a{text-decoration: none;width: 100px;height: 30px;background: #007c6a;border-radius: 10px;padding: 10px;display: flex;align-items: center;justify-content: center;font-size: 1.1rem;font-weight: 700;color: #d5effa;}");
+                "td a{text-decoration: none;width: 100px;height: 30px;background: #007c6a;border-radius: 10px;padding: 10px;display: flex;align-items: center;justify-content: center;font-size: 1.1rem;font-weight: 700;color: #d5effa;}");
         table.append("</style>");
         table.append("<table class=\"movie-table\">");
     }
