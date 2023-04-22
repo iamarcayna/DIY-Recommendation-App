@@ -6,23 +6,34 @@
  */
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Random;
 
 public class RecommendationRunner implements Recommender {
+    private FourthRatings fourthRatings;
+    private ArrayList<Rating> averageMovieRatings;
+
+    public RecommendationRunner() {
+        this.fourthRatings = new FourthRatings();
+        this.averageMovieRatings = fourthRatings.getAverageRatingsByFilter(5, new TrueFilter());
+    }
 
     @Override
     public ArrayList<String> getItemsToRate() {
-        Random random = new Random();
+        Random random = new Random(System.currentTimeMillis());
+        HashSet<Integer> indexUsed = new HashSet<>();
         AllFilters filter = new AllFilters();
         filter.addFilter(new MinutesFilter(60, 200));
         filter.addFilter(new YearAfterFilter(1990));
         ArrayList<String> moviesToRate = new ArrayList<>();
-        ArrayList<String> selectFrom = MovieDatabase.filterBy(filter);
-        int movieCount = 10;
+        ArrayList<Rating> selectFrom = fourthRatings.getAverageRatingsByFilter(30, filter);
 
-        while (movieCount > 0) {
-            moviesToRate.add(selectFrom.get(random.nextInt(selectFrom.size())));
-            movieCount -= 1;
+        while (moviesToRate.size() < 10) {
+            int index = random.nextInt(selectFrom.size());
+            if (!indexUsed.contains(index)) {
+                indexUsed.add(index);
+                moviesToRate.add(selectFrom.get(index).getItem());
+            }
         }
 
         return moviesToRate;
@@ -31,19 +42,19 @@ public class RecommendationRunner implements Recommender {
     @Override
     public void printRecommendationsFor(String webRaterID) {
         StringBuilder htmlTable = new StringBuilder();
-        FourthRatings fourthRatings = new FourthRatings();
         ArrayList<Rating> topMovies = fourthRatings.getSimilarRatingsByFilter(webRaterID, 20, 5, new TrueFilter());
+        boolean hasRecommendation = false;
         setUpTable(htmlTable);
 
-        if (topMovies.size() == 0) {
+        for (Rating movie : topMovies) {
+            if (!RaterDatabase.getRater(webRaterID).hasRating(movie.getItem())) {
+                addRow(htmlTable, movie.getItem());
+                hasRecommendation = true;
+            }
+        }
+        if (!hasRecommendation) {
             htmlTable.append(
                     "<tr><td><h2>Sorry! We can't find any movies to recommend. Please try again.</h2></td></tr>");
-        } else {
-            for (Rating movie : topMovies) {
-                if (!RaterDatabase.getRater(webRaterID).hasRating(movie.getItem())) {
-                    addRow(htmlTable, movie);
-                }
-            }
         }
         htmlTable.append("</table>");
         System.out.println(htmlTable.toString());
@@ -66,15 +77,25 @@ public class RecommendationRunner implements Recommender {
         table.append("<table class=\"movie-table\">");
     }
 
-    private void addRow(StringBuilder table, Rating movie) {
+    private void addRow(StringBuilder table, String movieID) {
         table.append("<tr>");
-        table.append("<td><img class=\"thumb-nail\" src=\"" + MovieDatabase.getPoster(movie.getItem()) + "\" /></td>");
+        table.append("<td><img class=\"thumb-nail\" src=\"" + MovieDatabase.getPoster(movieID) + "\" /></td>");
         table.append("<td class=\"movie-details\">");
-        table.append("<h2>" + MovieDatabase.getTitle(movie.getItem()) + "</h2><hr/>");
-        table.append("<p><span>Genre:</span> " + MovieDatabase.getGenres(movie.getItem()) + "</p>");
-        table.append("<p><span>Year: </span> " + MovieDatabase.getYear(movie.getItem()) + "</p>");
-        table.append("<p><span>Duration: </span> " + MovieDatabase.getMinutes(movie.getItem()) + " mins</p></td>");
-        table.append("<td><a href=\"https://www.imdb.com/title/tt" + movie.getItem() + "/\">Watch</a></td>");
+        table.append("<h2>" + MovieDatabase.getTitle(movieID) + "</h2><hr/>");
+        table.append("<p><span>Rating:</span> " + getRating(movieID) + " &#x2605;</p>");
+        table.append("<p><span>Genre:</span> " + MovieDatabase.getGenres(movieID) + "</p>");
+        table.append("<p><span>Year: </span> " + MovieDatabase.getYear(movieID) + "</p>");
+        table.append("<p><span>Duration: </span> " + MovieDatabase.getMinutes(movieID) + " mins</p></td>");
+        table.append("<td><a href=\"https://www.imdb.com/title/tt" + movieID + "/\">Watch</a></td>");
         table.append("</tr>");
+    }
+
+    private double getRating(String movieID) {
+        for (Rating rating : averageMovieRatings) {
+            if (rating.getItem().equals(movieID)) {
+                return Math.floor(rating.getValue() * 10) / 10;
+            }
+        }
+        return 0.0;
     }
 }

@@ -32,6 +32,7 @@ public class FourthRatings {
                 averageRatings.add(new Rating(movieID, averageRating));
             }
         }
+        Collections.sort(averageRatings, Collections.reverseOrder());
         return averageRatings;
     }
 
@@ -68,10 +69,12 @@ public class FourthRatings {
         ArrayList<Rating> similarities = getSimilarities(id);
         List<Rating> topSimilar = similarities.size() >= numSimilar ? similarities.subList(0, numSimilar)
                 : similarities;
+        double average;
+        int raterCount;
 
         for (String movieID : MovieDatabase.filterBy(filter)) {
-            Double average = 0.0;
-            int raterCount = 0;
+            average = 0.0;
+            raterCount = 0;
             for (Rating rating : topSimilar) {
                 Rater rater = RaterDatabase.getRater(rating.getItem());
                 if (rater.hasRating(movieID)) {
